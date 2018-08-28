@@ -276,4 +276,45 @@ function getIsIgnored (filename) {
   return instance.ignores.bind(instance)
 }
 
-module.exports = formatFilesFromArgv
+function formatText (text) {
+  const logLevel = logger.getLevel()
+  const eslintPath = getPathInHostNodeModules('eslint')
+  const prettierPath = getPathInHostNodeModules('prettier')
+  const eslint = require(eslintPath)
+  const fixable = []
+  const rules = {}
+
+  if (eslint && eslint.linter) {
+    eslint.linter.getRules().forEach((v, k) => {
+      if (v.meta.fixable) {
+        fixable.push(k)
+      }
+    })
+  }
+
+  Object.keys(eslintConfig.rules).forEach(k => {
+    if (fixable.indexOf(k) !== -1) {
+      rules[k] = eslintConfig.rules[k]
+    }
+  })
+  rules['jsx-quotes'] = ['error', 'prefer-single']
+
+  const prettierESLintOptions = {
+    logLevel,
+    eslintPath,
+    prettierPath,
+    eslintConfig: {
+      parser: getPathInHostNodeModules('babel-eslint'),
+      parserOptions: eslintConfig.parserOptions,
+      rules
+    }
+  }
+
+  formatted = format(Object.assign({}, { text }, prettierESLintOptions))
+  return formatted
+}
+
+module.exports = {
+  formatFilesFromArgv: formatFilesFromArgv,
+  formatText: formatText
+}
